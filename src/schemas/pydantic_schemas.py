@@ -1,25 +1,35 @@
-# from typing import Optional
 from pydantic import BaseModel
 
-# Esquema base que permite establecer atributos comunes
-# al escribir o leer datos
+# Esquema base común para lecturas o escrituras
 class UsuarioBase(BaseModel):
-    nombre: str
+    first_name: str
+    last_name: str
+    email: str
+    city: str
+    country: str
 
-# Incluye datos necesarios para la creacion de un usuario
-class UsuarioCreateSchema (UsuarioBase):
-    contrasena: str
 
-class UsuarioLoginSchema (UsuarioBase):
-    contrasena: str
+# Esquema para creación de usuario (registro)
+class UsuarioCreateSchema(UsuarioBase):
+    password1: str
+    password2: str
 
-# Usado cuando se retorne una instancia desde el API
+
+# Esquema para inicio de sesión
+class UsuarioLoginSchema(BaseModel):
+    email: str
+    password: str
+
+
+# Esquema usado al retornar un usuario desde el API
 class UsuarioSchema(UsuarioBase):
     id: int
+
     class Config:
         orm_mode = True
 
 
+# Esquema para token JWT
 class TokenData(BaseModel):
-    access_token: str 
+    access_token: str
     token_type: str

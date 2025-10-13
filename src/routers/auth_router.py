@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
+from passlib.context import CryptContext
+
 
 # from worker.tasks import registrar_log
 
@@ -18,23 +20,42 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 auth_router = APIRouter(tags=['Auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-@auth_router.post('/signup', response_model = UsuarioSchema)
+
+@auth_router.post('/signup', response_model = UsuarioSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(user: UsuarioCreateSchema, db: Session = Depends(get_db)):
-    db_user_username = db.query(Usuario).filter(Usuario.nombre == user.nombre).first()
+
+    #Validate passwords
+    if user.password1 != user.password2:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Las contraseñas no coinciden.')
+    
+    #Validate unique email
+    db_user_username = db.query(Usuario).filter(Usuario.email == user.email).first()
     if db_user_username:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
-            detail = 'El nombre ya se encuentra registrado.',
+            detail = 'El correo electrónico ya se encuentra registrado.',
         )
+    
+    #Hash password
+    #hashed_password = pwd_context.hash(user.password1)
+
+    #Create user    
     db_user = Usuario(
-        nombre = user.nombre,
-        contrasena = user.contrasena,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        password=user.password1,
+        city=user.city,
+        country=user.country
     )
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
 
 @auth_router.post('/login', response_model = TokenData)
 async def login_for_access_token(user: UsuarioLoginSchema, db: Session = Depends(get_db)):

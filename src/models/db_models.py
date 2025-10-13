@@ -1,9 +1,13 @@
 from sqlalchemy import Column, Integer, String
-# from sqlalchemy.orm import relationship
 from src.db.database import Base
 
 class Usuario(Base):
     __tablename__ = "usuarios"
+
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(50))
-    contrasena = Column(String(50))
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    password = Column(String, nullable=False)
+    city = Column(String, nullable=False)
+    country = Column(String, nullable=False)
