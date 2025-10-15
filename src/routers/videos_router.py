@@ -6,6 +6,8 @@ from src.routers.auth_router import get_current_user
 from src.models.db_models import Video, Usuario
 import src.schemas.pydantic_schemas as schemas
 from uuid import uuid4
+from pymediainfo import MediaInfo
+from pathlib import Path
 
 
 router = APIRouter(prefix="/api/videos", tags=["Videos"])
@@ -15,6 +17,17 @@ BASE_PROCESSED_URL = "http://localhost:8000/uploads/processed"
 BASE_URL = "http://localhost:8000/uploads/processed"
 PROCESSED_DIR = os.path.join(UPLOAD_DIR, "processed")
 MAX_BYTES = 100 * 1024 * 1024
+MIN_T, MAX_T = 20, 60
+
+def _video_info(p: Path):
+    info = MediaInfo.parse(p)
+    for t in info.tracks:
+        if t.track_type == "Video" and t.duration:
+            duration = float(t.duration) / 1000.0
+            width = int(t.width or 0)
+            height = int(t.height or 0)
+            return duration, width, height
+    return 0.0, 0, 0
 
 @router.post("/upload", status_code=201, summary="Video subido exitosamente, tarea creada.")
 async def upload_video(
@@ -33,9 +46,6 @@ async def upload_video(
         raise HTTPException(status_code=400, detail="El archivo excede el límite de 100 MB")
     await video_file.seek(0)
 
-    # Validar duración (max 60 sgs)
-
-
     # Generar nombre único
     unique_name = f"{uuid4()}_{video_file.filename}"
     os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -43,6 +53,28 @@ async def upload_video(
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(video_file.file, buffer)
+
+    # Validar duración (min 20sgs max 60 sgs)
+    dur, width, height = _video_info(Path(file_path))
+    
+    if dur == 0.0:
+        os.remove(file_path)
+        raise HTTPException(status_code=400, detail="No se pudo determinar la duración del video.")
+    
+    if not (MIN_T <= dur <= MAX_T):
+        os.remove(file_path)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Duración inválida: {dur:.1f}s (debe estar entre {MIN_T} y {MAX_T} segundos)."
+        )
+    
+    # Validar resolución: 1080p o superior
+    if height < 1080 and width < 1920:
+        os.remove(file_path)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Resolución demasiado baja: {width}x{height} (mínimo 1920x1080)."
+        )
 
     # Registrar en BD con estado inicial
     new_video = Video(
