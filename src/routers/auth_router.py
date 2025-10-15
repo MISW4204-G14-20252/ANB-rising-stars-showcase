@@ -59,18 +59,18 @@ async def create_user(user: UsuarioCreateSchema, db: Session = Depends(get_db)):
 
 @auth_router.post('/login', response_model = TokenData)
 async def login_for_access_token(user: UsuarioLoginSchema, db: Session = Depends(get_db)):
-    user_db = db.query(Usuario).filter(Usuario.nombre == user.nombre).first()
+    user_db = db.query(Usuario).filter(Usuario.email == user.email).first()
     if not user_db:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST, detail = 'El usuario no es correcto.')
 
-    if not user.contrasena == user_db.contrasena:
+    if not user.password == user_db.password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail = 'La contraseña no es correcta.')
 
     # registrar_log.delay(user.nombre, datetime.now(timezone.utc))
     expires_delta = timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token_data={'sub': user_db.nombre,
+    access_token_data={'sub': user_db.email,
                        'exp': datetime.now(timezone.utc) + expires_delta}
     return {'access_token': jwt.encode(access_token_data, SECRET_KEY, algorithm = ALGORITHM), 'token_type': 'bearer'}
 

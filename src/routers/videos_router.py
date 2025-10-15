@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form
 from sqlalchemy.orm import Session
 import shutil, os
 from src.db.database import get_db
 from src.routers.auth_router import get_current_user
-import src.models as models
+from src.models.db_models import Video, Usuario
 import src.schemas.pydantic_schemas as schemas
 from uuid import uuid4
 
@@ -14,13 +14,14 @@ UPLOAD_DIR = "src/uploads"
 BASE_PROCESSED_URL = "http://localhost:8000/uploads/processed"
 BASE_URL = "http://localhost:8000/uploads/processed"
 PROCESSED_DIR = os.path.join(UPLOAD_DIR, "processed")
+MAX_BYTES = 100 * 1024 * 1024
 
 @router.post("/upload", status_code=201, summary="Video subido exitosamente, tarea creada.")
 async def upload_video(
-    title: str,
+    title: str = Form(...),
     video_file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: models.db_models.Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user)
 ):
     # Validar tipo de archivo
     if not video_file.filename.endswith(".mp4"):
@@ -28,9 +29,12 @@ async def upload_video(
 
     # Validar tamaño (máx 100 MB)
     contents = await video_file.read()
-    if len(contents) > 100 * 1024 * 1024:
+    if len(contents) > MAX_BYTES:
         raise HTTPException(status_code=400, detail="El archivo excede el límite de 100 MB")
     await video_file.seek(0)
+
+    # Validar duración (max 60 sgs)
+
 
     # Generar nombre único
     unique_name = f"{uuid4()}_{video_file.filename}"
@@ -41,7 +45,7 @@ async def upload_video(
         shutil.copyfileobj(video_file.file, buffer)
 
     # Registrar en BD con estado inicial
-    new_video = models.Video(
+    new_video = Video(
         title=title,
         filename=unique_name,
         owner_id=current_user.id
@@ -61,115 +65,103 @@ async def upload_video(
 
     return {"message": "Video subido correctamente. Procesamiento en curso.", "task_id": new_video.id}
 
-
-
 @router.get("/", response_model=list[schemas.VideoOut], summary="Lista de videos subidos por el usuario autenticado")
 def list_my_videos(
     db: Session = Depends(get_db),
-    current_user: models.db_models.Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user)
 ):
-    videos = db.query(models.Video).filter(models.Video.owner_id == current_user.id).order_by(models.Video.uploaded_at.desc()).all()
+    videos = (
+        db.query(Video)
+        .filter(Video.owner_id == current_user.id)
+        .order_by(Video.uploaded_at.desc())
+        .all()
+    )
 
-    response = []
-    for video in videos:
-        video_data = {
-            "video_id": video.id,
-            "title": video.title,
-            "status": video.status,
-            "uploaded_at": video.uploaded_at,
-            "processed_at": video.processed_at,
-        }
-        if video.status == "processed":
-            video_data["processed_url"] = f"{BASE_URL}/{video.filename}"
-        response.append(video_data)
+    return videos
 
-    return response
-
-
-
-@router.get(
-    "/{video_id}",
-    response_model=schemas.VideoDetailOut,
-    summary="Detalle de un video específico"
-)
-def get_video_detail(
+@router.get("/{video_id}", response_model=schemas.VideoOut, summary="Obtiene la informacion detallada de un video por ID")
+def get_video_by_id(
     video_id: int,
     db: Session = Depends(get_db),
-    current_user: models.db_models.Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user)
 ):
-    video = db.query(models.Video).filter(models.Video.id == video_id).first()
+    # Buscar el video
+    video = db.query(Video).filter(Video.id == video_id).first()
 
     if not video:
-        raise HTTPException(status_code=404, detail="Video no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"El video con id={video_id} no existe."
+        )
 
-    # Si existe pero no pertenece al usuario autenticado
+    # Verificar que pertenece al usuario actual
     if video.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No tienes permiso para acceder a este video")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para acceder a este video."
+        )
 
-    # Construir URLs
-    original_url = f"{BASE_UPLOAD_URL}/{video.filename}"
-    processed_url = None
-    if video.status == "processed":
-        processed_url = f"{BASE_PROCESSED_URL}/{video.filename}"
-
-    # (Simulación, si aún no tienes sistema de votos)
-    votes = getattr(video, "votes", 0)
-
-    return {
-        "video_id": video.id,
+    # Respuesta
+    response = {
+        "id": video.id,
         "title": video.title,
         "status": video.status,
         "uploaded_at": video.uploaded_at,
         "processed_at": video.processed_at,
-        "original_url": original_url,
-        "processed_url": processed_url,
-        "votes": votes
+        "filename": video.filename,
     }
 
+    # Si ya fue procesado, incluir la URL
+    if video.status == "processed":
+        response["processed_url"] = f"{BASE_URL}/{video.filename}"
+    else:
+        response["processed_url"] = None
+
+    return response
 
 @router.delete(
     "/{video_id}",
-    summary="Elimina un video subido por el usuario autenticado"
+    status_code=status.HTTP_200_OK,
+    summary="Elimina un video por ID"
 )
-def delete_video(
+def delete_video_by_id(
     video_id: int,
     db: Session = Depends(get_db),
-    current_user: models.db_models.Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user)
 ):
-    # Buscar video
-    video = db.query(models.Video).filter(models.Video.id == video_id).first()
-
-    # Si no existe → 404
+    # Buscar el video
+    video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
-        raise HTTPException(status_code=404, detail="Video no encontrado")
-
-    # Si existe pero no pertenece al usuario → 403
-    if video.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="No tienes permiso para eliminar este video")
-
-    # Si el video ya fue procesado → 400
-    # (o en el futuro, si tuviera campo "published_for_voting", también se validaría aquí)
-    if video.status == "processed":
         raise HTTPException(
-            status_code=400,
-            detail="No se puede eliminar un video ya procesado o publicado para votación"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"El video con id={video_id} no existe."
         )
 
-    # Intentar eliminar archivo original y procesado
-    original_path = os.path.join(BASE_UPLOAD_DIR, video.filename)
-    processed_path = os.path.join(PROCESSED_DIR, video.filename)
+    # Verificar que pertenece al usuario actual
+    if video.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar este video."
+        )
+    
+    # Verificar que no esté procesado
+    
+    if video.status == "processed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El video ya esta procesado para votación."
+        )
 
-    for path in [original_path, processed_path]:
+    # Eliminar archivo del sistema
+    file_path = os.path.join(UPLOAD_DIR, video.filename)
+    if os.path.exists(file_path):
         try:
-            os.remove(path)
-        except FileNotFoundError:
-            pass
+            os.remove(file_path)
+        except Exception as e:
+            print(f"No se pudo borrar el archivo físico: {e}")
 
-    # Eliminar registro en BD
+    # Eliminar registro en base de datos
     db.delete(video)
     db.commit()
 
-    return {
-        "message": "El video ha sido eliminado exitosamente.",
-        "video_id": video.id
-    }
+    return {"message": f"Video '{video.title}' eliminado correctamente.", "video_id": video_id}
