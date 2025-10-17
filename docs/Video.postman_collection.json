@@ -15,7 +15,7 @@
 						"exec": [
 							"let data = pm.response.json();\r",
 							"\r",
-							"pm.globals.set(\"TASK_ID\", data.task_id);\r",
+							"pm.globals.set(\"VIDEO_ID\", data.task_id);\r",
 							""
 						],
 						"type": "text/javascript",
@@ -70,9 +70,6 @@
 		},
 		{
 			"name": "GET Videos per User",
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
 			"request": {
 				"auth": {
 					"type": "bearer",
@@ -86,10 +83,6 @@
 				},
 				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"email\": \"{{EMAIL}}\",\r\n    \"password\": \"{{PASSWORD}}\"\r\n}"
-				},
 				"url": {
 					"raw": "http://localhost:8000/api/videos/",
 					"protocol": "http",
@@ -109,10 +102,30 @@
 		{
 			"name": "GET detailed video",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": ""
+					"raw": "http://localhost:8000/api/videos/{{VIDEO_ID}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"videos",
+						"{{VIDEO_ID}}"
+					]
 				}
 			},
 			"response": []
@@ -120,10 +133,30 @@
 		{
 			"name": "DEL video",
 			"request": {
-				"method": "GET",
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
 				"header": [],
 				"url": {
-					"raw": ""
+					"raw": "http://localhost:8000/api/videos/{{VIDEO_ID}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"videos",
+						"{{VIDEO_ID}}"
+					]
 				}
 			},
 			"response": []

@@ -4,6 +4,12 @@ from celery import Celery
 from datetime import datetime
 import logging
 
+from sqlalchemy.orm import Session
+
+from src.models.db_models import Video
+
+from src.db.database import get_db
+
 celery = Celery("tasks", broker="redis://localhost:6379/0")
 
 BASE_DIR = Path(__file__).parent.parent
@@ -15,9 +21,10 @@ PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @celery.task(name="tasks.process_video")
-def process_video(filename):
+def process_video(video: dict):
     try:
-        print(filename)
+        start_time = datetime.now()
+        filename = video.get("filename")
 
         name = filename.split(".")[0]
         source = UNPROCESSED_DIR / filename
@@ -64,6 +71,8 @@ def process_video(filename):
                 "-b:a",
                 "128k",
                 "-y",
+                "-loglevel",
+                "error",
                 str(source_tmp),
             ],
             check=True,
@@ -97,12 +106,25 @@ def process_video(filename):
                 "-b:a",
                 "128k",
                 "-y",
+                "-loglevel",
+                "error",
                 str(destination),
             ],
             check=True,
         )
+        logging.info("Video processed successfully")
 
-        logging.info(f"Video processed successfully: {destination}")
+        logging.info("Creating database session")
+        db: Session = next(get_db())
+
+        logging.info("Updating database status")
+
+        db.query(Video).filter(Video.id == video.get("id")).update(
+            {"status": "processed", "processed_at": datetime.now()}
+        )
+        db.commit()
+
+        logging.info("Database status updated successfully")
 
         return {
             "success": True,
@@ -110,6 +132,9 @@ def process_video(filename):
             "source": str(source),
             "destination": str(destination),
             "timestamp": datetime.now().isoformat(),
+            "processing_time_seconds": round(
+                (datetime.now() - start_time).total_seconds(), 2
+            ),
         }
 
     except subprocess.CalledProcessError as e:

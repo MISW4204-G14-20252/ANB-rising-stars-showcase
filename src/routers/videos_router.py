@@ -10,7 +10,7 @@ import src.schemas.pydantic_schemas as schemas
 from uuid import uuid4
 from pymediainfo import MediaInfo
 from pathlib import Path
-
+import sys
 
 router = APIRouter(prefix="/api/videos", tags=["Videos"])
 
@@ -18,11 +18,20 @@ BASE_DIR = Path(__file__).parent.parent.parent
 
 BASE_PROCESSED_URL = "http://localhost:8000/uploads/processed"
 BASE_URL = "http://localhost:8000/uploads/processed"
-UPLOAD_DIR = BASE_DIR / "videos/unprocessed-videos" 
+UPLOAD_DIR = BASE_DIR / "videos/unprocessed-videos"
 PROCESSED_DIR = BASE_DIR / "videos/processed-videos"
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.INFO)
+
+logger.addHandler(console_handler)
 
 MAX_BYTES = 100 * 1024 * 1024
 MIN_T, MAX_T = 20, 60
+
 
 def _video_info(p: Path):
     info = MediaInfo.parse(p)
@@ -34,12 +43,15 @@ def _video_info(p: Path):
             return duration, width, height
     return 0.0, 0, 0
 
-@router.post("/upload", status_code=201, summary="Video subido exitosamente, tarea creada.")
+
+@router.post(
+    "/upload", status_code=201, summary="Video subido exitosamente, tarea creada."
+)
 async def upload_video(
     title: str = Form(...),
     video_file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
 ):
     # Validar tipo de archivo
     logging.info(f"Uploading file: {video_file.filename}")
@@ -49,7 +61,9 @@ async def upload_video(
     # Validar tamaño (máx 100 MB)
     contents = await video_file.read()
     if len(contents) > MAX_BYTES:
-        raise HTTPException(status_code=400, detail="El archivo excede el límite de 100 MB")
+        raise HTTPException(
+            status_code=400, detail="El archivo excede el límite de 100 MB"
+        )
     await video_file.seek(0)
 
     # Generar nombre único
@@ -62,32 +76,30 @@ async def upload_video(
 
     # Validar duración (min 20sgs max 60 sgs)
     dur, width, height = _video_info(Path(file_path))
-    
+
     if dur == 0.0:
         os.remove(file_path)
-        raise HTTPException(status_code=400, detail="No se pudo determinar la duración del video.")
-    
+        raise HTTPException(
+            status_code=400, detail="No se pudo determinar la duración del video."
+        )
+
     if not (MIN_T <= dur <= MAX_T):
         os.remove(file_path)
         raise HTTPException(
             status_code=400,
-            detail=f"Duración inválida: {dur:.1f}s (debe estar entre {MIN_T} y {MAX_T} segundos)."
+            detail=f"Duración inválida: {dur:.1f}s (debe estar entre {MIN_T} y {MAX_T} segundos).",
         )
-    
+
     # Validar resolución: 1080p o superior
     if height < 1080 and width < 1920:
         os.remove(file_path)
         raise HTTPException(
             status_code=400,
-            detail=f"Resolución demasiado baja: {width}x{height} (mínimo 1920x1080)."
+            detail=f"Resolución demasiado baja: {width}x{height} (mínimo 1920x1080).",
         )
 
     # Registrar en BD con estado inicial
-    new_video = Video(
-        title=title,
-        filename=unique_name,
-        owner_id=current_user.id
-    )
+    new_video = Video(title=title, filename=unique_name, owner_id=current_user.id)
     db.add(new_video)
     db.commit()
     db.refresh(new_video)
@@ -95,16 +107,24 @@ async def upload_video(
     # Encolar tarea asíncrona (procesamiento)
     try:
         from worker.video_processor_task import process_video
-        process_video.delay(unique_name)
+
+        process_video.delay(new_video.to_dict())
     except Exception as e:
         print(f" Error encolando tarea: {e}")
 
-    return {"message": "Video subido correctamente. Procesamiento en curso.", "task_id": new_video.id}
+    return {
+        "message": "Video subido correctamente. Procesamiento en curso.",
+        "task_id": new_video.id,
+    }
 
-@router.get("/", response_model=list[schemas.VideoOut], summary="Lista de videos subidos por el usuario autenticado")
+
+@router.get(
+    "/",
+    response_model=list[schemas.VideoOut],
+    summary="Lista de videos subidos por el usuario autenticado",
+)
 def list_my_videos(
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_user)
 ):
     videos = (
         db.query(Video)
@@ -115,11 +135,16 @@ def list_my_videos(
 
     return videos
 
-@router.get("/{video_id}", response_model=schemas.VideoOut, summary="Obtiene la informacion detallada de un video por ID")
+
+@router.get(
+    "/{video_id}",
+    response_model=schemas.VideoOut,
+    summary="Obtiene la informacion detallada de un video por ID",
+)
 def get_video_by_id(
     video_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
 ):
     # Buscar el video
     video = db.query(Video).filter(Video.id == video_id).first()
@@ -127,14 +152,14 @@ def get_video_by_id(
     if not video:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"El video con id={video_id} no existe."
+            detail=f"El video con id={video_id} no existe.",
         )
 
     # Verificar que pertenece al usuario actual
     if video.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para acceder a este video."
+            detail="No tienes permiso para acceder a este video.",
         )
 
     # Respuesta
@@ -155,37 +180,35 @@ def get_video_by_id(
 
     return response
 
+
 @router.delete(
-    "/{video_id}",
-    status_code=status.HTTP_200_OK,
-    summary="Elimina un video por ID"
+    "/{video_id}", status_code=status.HTTP_200_OK, summary="Elimina un video por ID"
 )
 def delete_video_by_id(
     video_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
 ):
     # Buscar el video
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"El video con id={video_id} no existe."
+            detail=f"El video con id={video_id} no existe.",
         )
 
     # Verificar que pertenece al usuario actual
     if video.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para eliminar este video."
+            detail="No tienes permiso para eliminar este video.",
         )
-    
+
     # Verificar que no esté procesado
-    
     if video.status == "processed":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El video ya esta procesado para votación."
+            detail="El video ya esta procesado para votación.",
         )
 
     # Eliminar archivo del sistema
@@ -200,4 +223,7 @@ def delete_video_by_id(
     db.delete(video)
     db.commit()
 
-    return {"message": f"Video '{video.title}' eliminado correctamente.", "video_id": video_id}
+    return {
+        "message": f"Video '{video.title}' eliminado correctamente.",
+        "video_id": video_id,
+    }
