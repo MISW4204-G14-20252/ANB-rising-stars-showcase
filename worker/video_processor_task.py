@@ -17,6 +17,8 @@ PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 @celery.task(name="tasks.process_video")
 def process_video(filename):
     try:
+        print(filename)
+
         name = filename.split(".")[0]
         source = UNPROCESSED_DIR / filename
         source_tmp = UNPROCESSED_DIR / f"{name}.tmp.mp4"
@@ -131,8 +133,12 @@ def process_video(filename):
         }
 
     finally:
-        if source_tmp.exists():
-            source_tmp.unlink()
+        for file in [source, source_tmp]:
+            try:
+                if file.exists():
+                    file.unlink()
+            except Exception as cleanup_error:
+                logging.warning(f"Error cleaning up file {file}: {cleanup_error}")
 
 
 if __name__ == "__main__":

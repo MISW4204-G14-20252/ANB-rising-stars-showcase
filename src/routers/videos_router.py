@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form
 from sqlalchemy.orm import Session
-import shutil, os
+import shutil
+import os
+import logging
 from src.db.database import get_db
 from src.routers.auth_router import get_current_user
 from src.models.db_models import Video, Usuario
@@ -12,10 +14,13 @@ from pathlib import Path
 
 router = APIRouter(prefix="/api/videos", tags=["Videos"])
 
-UPLOAD_DIR = "src/uploads"
+BASE_DIR = Path(__file__).parent.parent.parent
+
 BASE_PROCESSED_URL = "http://localhost:8000/uploads/processed"
 BASE_URL = "http://localhost:8000/uploads/processed"
-PROCESSED_DIR = os.path.join(UPLOAD_DIR, "processed")
+UPLOAD_DIR = BASE_DIR / "videos/unprocessed-videos" 
+PROCESSED_DIR = BASE_DIR / "videos/processed-videos"
+
 MAX_BYTES = 100 * 1024 * 1024
 MIN_T, MAX_T = 20, 60
 
@@ -37,6 +42,7 @@ async def upload_video(
     current_user: Usuario = Depends(get_current_user)
 ):
     # Validar tipo de archivo
+    logging.info(f"Uploading file: {video_file.filename}")
     if not video_file.filename.endswith(".mp4"):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos MP4")
 
@@ -86,14 +92,12 @@ async def upload_video(
     db.commit()
     db.refresh(new_video)
 
-    """
     # Encolar tarea asíncrona (procesamiento)
     try:
-        from src.tasks import process_video_task
-        process_video_task.delay(new_video.id, file_path)
+        from worker.video_processor_task import process_video
+        process_video.delay(unique_name)
     except Exception as e:
         print(f" Error encolando tarea: {e}")
-    """
 
     return {"message": "Video subido correctamente. Procesamiento en curso.", "task_id": new_video.id}
 
