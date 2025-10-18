@@ -10,7 +10,10 @@ from src.models.db_models import Video
 
 from src.db.database import get_db
 
-celery = Celery("tasks", broker="redis://localhost:6379/0")
+import os
+
+BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+celery = Celery("tasks", broker=BROKER_URL)
 
 BASE_DIR = Path(__file__).parent.parent
 UNPROCESSED_DIR = BASE_DIR / "videos" / "unprocessed-videos"
