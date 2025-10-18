@@ -20,3 +20,30 @@ $ pip install -r requirements.txt
 ```bash
 $ uvicorn src.main:app --reload
 ```
+
+## Para ejecutar los contenedores (dev)
+
+1. Ejecutar el siguiente comando para levantar los servicios:
+
+```bash
+$ docker compose -f ./docker-compose.dev.yaml up
+```
+
+2. Si desea detener los servicios puede usar la instrucción `stop`, posteriormente se pueden volver a iniciar. Si por el contrario quiere eliminarlos hay que utilizar la instrucción `down`.
+
+```bash
+$ docker compose -f ./docker-compose.dev.yaml stop
+$ docker compose -f ./docker-compose.dev.yaml down
+```
+
+## Agregar video
+
+```bash
+$ celery -A worker.video_proc worker --pool=solo --loglevel=info
+```
+
+```bash
+$ python -i worker/video_proc.py
+
+>>> procesar_video.delay("input_l30s.mp4")
+```

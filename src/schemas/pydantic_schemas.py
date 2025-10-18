@@ -1,4 +1,6 @@
 from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
 
 # Esquema base común para lecturas o escrituras
 class UsuarioBase(BaseModel):
@@ -33,3 +35,35 @@ class UsuarioSchema(UsuarioBase):
 class TokenData(BaseModel):
     access_token: str
     token_type: str
+
+
+
+class VideoBase(BaseModel):
+    title: str
+
+class VideoCreate(VideoBase):
+    pass
+
+class VideoDetailOut(BaseModel):
+    video_id: int
+    title: str
+    status: str
+    uploaded_at: datetime
+    processed_at: Optional[datetime] = None
+    original_url: str
+    processed_url: Optional[str] = None
+    votes: int
+
+    class Config:
+        from_attributes = True
+
+class VideoOut(VideoBase):
+    id: int
+    filename: str
+    status: str
+    uploaded_at: datetime
+    processed_at: Optional[datetime] = None
+    processed_url: Optional[str] = None
+
+    class Config:
+        orm_mode = True
