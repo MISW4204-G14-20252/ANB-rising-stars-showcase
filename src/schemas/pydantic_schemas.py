@@ -67,3 +67,34 @@ class VideoOut(VideoBase):
 
     class Config:
         orm_mode = True
+
+class VideoPublicOut(BaseModel):
+    """
+    Representa un video público disponible para votación.
+    """
+    id: int
+    title: str
+    processed_url: Optional[str] = None
+    votes: int
+
+    class Config:
+        orm_mode = True
+
+
+class Vote(BaseModel):
+    """
+    Representa un voto emitido por un usuario a un video público.
+    """
+    video_id: int
+    user_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class RankingOut(BaseModel):
+    """
+    Representa la posición de un jugador en el ranking de votos acumulados.
+    """
+    jugador: str
+    votos_acumulados: int
