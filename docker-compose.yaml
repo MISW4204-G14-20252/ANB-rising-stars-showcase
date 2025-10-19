@@ -72,23 +72,6 @@ services:
       - ./videos/unprocessed-videos:/app/videos/unprocessed-videos
       - ./videos/processed-videos:/app/videos/processed-videos
 
-  test:
-    build: .
-    container_name: anb_pytest
-    command: pytest -v --disable-warnings
-    networks:
-      - backend
-    volumes:
-      - .:/app
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    environment:
-      - DATABASE_URL=postgresql+psycopg2://postgres:root@db:5432/ANB
-      - REDIS_URL=redis://redis:6379/0
-
 networks:
   backend:
     driver: bridge
