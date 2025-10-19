@@ -4,6 +4,7 @@ from src.main import app
 from src.routers import videos_router
 import io
 from fastapi import UploadFile
+import sys
 
 client = TestClient(app)
 
@@ -209,4 +210,76 @@ def test_upload_video_invalid_format(monkeypatch):
     )
     assert r.status_code == 400
     assert "MP4" in r.json()["detail"]
+    app.dependency_overrides.clear()
+    
+def test_upload_video_too_large(monkeypatch):
+    """Debe fallar si el video excede 100 MB"""
+    # Mock de usuario autenticado
+    app.dependency_overrides[videos_router.get_current_user] = lambda: type("U", (), {"id": 1})()
+
+    # Fake DB que no hace nada
+    class FakeDB:
+        def add(self, x): ...
+        def commit(self): ...
+        def refresh(self, x): ...
+    app.dependency_overrides[videos_router.get_db] = lambda: FakeDB()
+
+    # Archivo de 101 MB simulado
+    fake_file = io.BytesIO(b"x" * (101 * 1024 * 1024))
+    files = {"video_file": ("big.mp4", fake_file, "video/mp4")}
+    data = {"title": "Video gigante"}
+
+    r = client.post("/api/videos/upload", files=files, data=data, headers={"Authorization": "Bearer tkn"})
+    assert r.status_code == 400
+    assert "100" in r.json()["detail"]
+    app.dependency_overrides.clear()
+    
+def test_upload_video_invalid_duration(monkeypatch):
+    """Debe fallar si no se puede determinar duración del video"""
+    from src.routers import videos_router
+
+    app.dependency_overrides[videos_router.get_current_user] = lambda: type("U", (), {"id": 1})()
+    app.dependency_overrides[videos_router.get_db] = lambda: type("FakeDB", (), {"add": lambda self, x: None, "commit": lambda self: None, "refresh": lambda self, x: None})()
+
+    # Monkeypatch para forzar duración = 0
+    monkeypatch.setattr(videos_router, "_video_info", lambda path: (0.0, 0, 0))
+
+    fake_file = io.BytesIO(b"1234567890")
+    files = {"video_file": ("short.mp4", fake_file, "video/mp4")}
+    data = {"title": "Duración inválida"}
+
+    r = client.post("/api/videos/upload", files=files, data=data, headers={"Authorization": "Bearer token"})
+    assert r.status_code == 400
+    assert "duración" in r.json()["detail"].lower()
+    app.dependency_overrides.clear()
+    
+    
+def test_upload_video_worker_exception(monkeypatch, tmp_path):
+    """Debe capturar error si falla el encolado del worker"""
+    from src.routers import videos_router
+
+    fake_user = type("U", (), {"id": 1})()
+    app.dependency_overrides[videos_router.get_current_user] = lambda: fake_user
+
+    class FakeDB:
+        def add(self, x): ...
+        def commit(self): ...
+        def refresh(self, x): setattr(x, "id", 99)
+    app.dependency_overrides[videos_router.get_db] = lambda: FakeDB()
+
+    # Forzar que pase todas las validaciones de duración y resolución
+    monkeypatch.setattr(videos_router, "_video_info", lambda path: (30.0, 1920, 1080))
+
+    # Simular import y error en el delay
+    class FakeProcess:
+        def delay(self, data): raise Exception("Falla simulada")
+    monkeypatch.setitem(sys.modules, "worker.video_processor_task", type("FakeWorker", (), {"process_video": FakeProcess()}))
+
+    fake_file = io.BytesIO(b"x" * 1024)
+    files = {"video_file": ("ok.mp4", fake_file, "video/mp4")}
+    data = {"title": "Video worker error"}
+
+    r = client.post("/api/videos/upload", files=files, data=data, headers={"Authorization": "Bearer token"})
+    assert r.status_code == 201
+    assert "procesamiento" in r.json()["message"].lower()
     app.dependency_overrides.clear()
