@@ -35,6 +35,8 @@ services:
     container_name: anb_fastapi_back
     networks:
       - backend
+    expose:
+      - "80"
     ports:
       - "8000:8000"
     depends_on:
@@ -71,6 +73,19 @@ services:
     volumes:
       - ./videos/unprocessed-videos:/app/videos/unprocessed-videos
       - ./videos/processed-videos:/app/videos/processed-videos
+
+  nginx:
+    image: nginx:latest
+    container_name: anb_nginx_proxy
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    networks:
+      - backend
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
 
 networks:
   backend:
