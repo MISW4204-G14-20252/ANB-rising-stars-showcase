@@ -82,8 +82,8 @@ jobs:
           echo "[>] Waiting for FastAPI service to be ready..."
 
           for i in {1..10}; do
-            if curl -s http://localhost:8000/docs > /dev/null; then
-              echo "[✅] FastAPI is up!"
+            if curl -s http://localhost:80/docs > /dev/null; then
+              echo "[>] FastAPI is up!"
               break
             fi
             echo "[>] Waiting for FastAPI..."
@@ -93,17 +93,7 @@ jobs:
       - name: Run API tests with Newman
         run: |
           echo "[>] Searching for Postman collections in docs/..."
-          collections=$(find docs -type f -name "*.postman_collection.json")
-
-          if [ -z "$collections" ]; then
-            echo "[!] No Postman collections found in docs/. Skipping Newman tests."
-            exit 0
-          fi
-
-          for collection in $collections; do
-            echo "[>] Running Newman tests for: $collection"
-            newman run "$collection" \
-              -e docs/ANB-env.postman_environment.json \
-              --reporters cli,junit \
-              --reporter-junit-export newman-results.xml
-          done
+          newman run "./collections/ANB-Rising-stars.postman_collection.json" \
+            -e docs/ANB-env.postman_environment.json \
+            --reporters cli,junit \
+            --reporter-junit-export newman-results.xml
