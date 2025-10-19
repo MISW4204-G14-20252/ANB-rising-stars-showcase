@@ -15,10 +15,7 @@ router = APIRouter(prefix="/api/public", tags=["Public"])
     summary="Lista de videos públicos disponibles para votación",
 )
 def list_public_videos(db: Session = Depends(get_db)):
-    """
-    Devuelve todos los videos que han sido publicados para votación.
-    No requiere autenticación obligatoria.
-    """
+
     videos = (
         db.query(Video)
         .filter(Video.status == "processed")
@@ -46,10 +43,7 @@ def vote_public_video(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """
-    Permite que un usuario autenticado emita un voto por un video público.
-    Solo se permite un voto por usuario por video.
-    """
+
     video = db.query(Video).filter(Video.id == video_id, Video.status == "processed").first()
     if not video:
         raise HTTPException(
@@ -97,11 +91,7 @@ def get_rankings(
     skip: int = 0,
     limit: int = 10,
 ):
-    """
-    Devuelve un ranking de los jugadores ordenados por el total de votos
-    acumulados en todos sus videos públicos.
-    Admite paginación mediante parámetros `skip` y `limit`.
-    """
+
     rankings = (
         db.query(
             Usuario.first_name.label("jugador"),
@@ -109,7 +99,7 @@ def get_rankings(
         )
         .join(Video, Video.owner_id == Usuario.id)
         .filter(Video.status == "processed")
-        .group_by(Usuario.id)  # Solo agrupar por ID (suficiente y más eficiente)
+        .group_by(Usuario.id) 
         .order_by(desc(func.coalesce(func.sum(Video.votes_count), 0)))
         .offset(skip)
         .limit(limit)

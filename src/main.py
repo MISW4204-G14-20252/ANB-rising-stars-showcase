@@ -16,6 +16,6 @@ async def root():
 
 app.include_router(router = auth_router, prefix="/api/auth")
 
-app.include_router(router = videos_router.router)  # No prefix here, as it's already defined in the router itself
+app.include_router(router = videos_router.router)
 
 app.include_router(router = public_router.router)

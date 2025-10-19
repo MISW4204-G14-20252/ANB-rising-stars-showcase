@@ -34,7 +34,6 @@ class Video(Base):
     votes = relationship("Vote", back_populates="video")
 
     def to_dict(self):
-        """Serializa el objeto a diccionario"""
         return {
             "id": self.id,
             "title": self.title,
