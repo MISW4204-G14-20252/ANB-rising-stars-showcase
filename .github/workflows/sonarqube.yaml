@@ -74,6 +74,21 @@ jobs:
       - name: Install Newman
         run: npm install -g newman
 
+      - name: Start services with Docker Compose
+        run: |
+          echo "[>] Starting Docker Compose services..."
+          docker compose up -d
+          echo "[>] Waiting for FastAPI service to be ready..."
+
+          for i in {1..10}; do
+            if curl -s http://localhost:8000/docs > /dev/null; then
+              echo "[✅] FastAPI is up!"
+              break
+            fi
+            echo "[>] Waiting for FastAPI..."
+            sleep 5
+          done
+
       - name: Run API tests with Newman
         run: |
           echo "[>] Searching for Postman collections in docs/..."
