@@ -75,7 +75,7 @@ class VideoPublicOut(BaseModel):
     id: int
     title: str
     processed_url: Optional[str] = None
-    votes: int
+    votes_count: int
 
     class Config:
         orm_mode = True

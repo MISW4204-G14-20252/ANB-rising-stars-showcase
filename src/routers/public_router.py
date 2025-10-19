@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
 from src.db.database import get_db
-from src.models.db_models import Video, Usuario
+from src.models.db_models import Video, Usuario, Vote
 from src.routers.auth_router import get_current_user
 import src.schemas.pydantic_schemas as schemas
 
@@ -20,8 +21,8 @@ def list_public_videos(db: Session = Depends(get_db)):
     """
     videos = (
         db.query(Video)
-        .filter(Video.is_public == True, Video.status == "processed")
-        .order_by(Video.votes.desc())
+        .filter(Video.status == "processed")
+        .order_by(desc(Video.votes_count))
         .all()
     )
 
@@ -49,8 +50,7 @@ def vote_public_video(
     Permite que un usuario autenticado emita un voto por un video público.
     Solo se permite un voto por usuario por video.
     """
-
-    video = db.query(Video).filter(Video.id == video_id, Video.is_public == True).first()
+    video = db.query(Video).filter(Video.id == video_id, Video.status == "processed").first()
     if not video:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -59,8 +59,8 @@ def vote_public_video(
 
     # Validar si el usuario ya votó este video
     existing_vote = (
-        db.query(schemas.Vote)
-        .filter(schemas.Vote.video_id == video_id, schemas.Vote.user_id == current_user.id)
+        db.query(Vote)
+        .filter(Vote.video_id == video_id, Vote.user_id == current_user.id)
         .first()
     )
     if existing_vote:
@@ -70,18 +70,26 @@ def vote_public_video(
         )
 
     # Registrar el voto
-    vote = schemas.Vote(video_id=video_id, user_id=current_user.id)
+    vote = Vote(video_id=video_id, user_id=current_user.id)
     db.add(vote)
-    video.votes += 1
+
+    # Incrementar contador de votos
+    video.votes_count = (video.votes_count or 0) + 1
+
     db.commit()
     db.refresh(video)
 
-    return {"message": "Voto registrado correctamente.", "video_id": video.id, "total_votos": video.votes}
+    return {
+        "message": "Voto registrado correctamente.",
+        "video_id": video.id,
+        "total_votos": video.votes_count,
+    }
 
 
 # Endpoint 9: Mostrar ranking de jugadores por votos acumulados
 @router.get(
     "/rankings",
+    response_model=list[schemas.RankingOut],
     summary="Muestra el ranking actual de los jugadores por votos acumulados",
 )
 def get_rankings(
@@ -94,16 +102,15 @@ def get_rankings(
     acumulados en todos sus videos públicos.
     Admite paginación mediante parámetros `skip` y `limit`.
     """
-
     rankings = (
         db.query(
-            Usuario.username,
-            db.func.sum(Video.votes).label("total_votos"),
+            Usuario.first_name.label("jugador"),
+            func.coalesce(func.sum(Video.votes_count), 0).label("votos_acumulados"),
         )
         .join(Video, Video.owner_id == Usuario.id)
-        .filter(Video.is_public == True)
-        .group_by(Usuario.username)
-        .order_by(db.desc("total_votos"))
+        .filter(Video.status == "processed")
+        .group_by(Usuario.id)  # Solo agrupar por ID (suficiente y más eficiente)
+        .order_by(desc(func.coalesce(func.sum(Video.votes_count), 0)))
         .offset(skip)
         .limit(limit)
         .all()
@@ -116,6 +123,6 @@ def get_rankings(
         )
 
     return [
-        {"jugador": r.username, "votos_acumulados": int(r.total_votos or 0)}
+        {"jugador": r.jugador, "votos_acumulados": r.votos_acumulados}
         for r in rankings
     ]

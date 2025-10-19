@@ -18,18 +18,16 @@ class Usuario(Base):
     videos = relationship("Video", back_populates="owner")
     votes = relationship("Vote", back_populates="user")
 
-
 class Video(Base):
     __tablename__ = "videos"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     filename = Column(String, nullable=False)
-    status = Column(String, default="uploaded")  # uploaded | processed | public
+    status = Column(String, default="uploaded")
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
     processed_at = Column(DateTime(timezone=True), nullable=True)
     owner_id = Column(Integer, ForeignKey("usuarios.id"))
-    is_public = Column(Boolean, default=False)
     votes_count = Column(Integer, default=0)
 
     owner = relationship("Usuario", back_populates="videos")
@@ -47,7 +45,6 @@ class Video(Base):
             if self.processed_at
             else None,
             "owner_id": self.owner_id,
-            "is_public": self.is_public,
             "votes_count": self.votes_count,
         }
 
