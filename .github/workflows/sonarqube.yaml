@@ -22,35 +22,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
-
-      postgres-sonar:
-        image: postgres:15
-        ports:
-          - 5433:5432
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: admin
-          POSTGRES_DB: sonar
-        options: >-
-          --health-cmd "pg_isready -U admin"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-
-      sonarqube:
-        image: sonarqube:community
-        ports:
-          - 9000:9000
-        env:
-          SONAR_JDBC_URL: jdbc:postgresql://postgres-sonar:5432/sonar
-          SONAR_JDBC_USERNAME: admin
-          SONAR_JDBC_PASSWORD: admin
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/api/system/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 20
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -65,7 +36,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-
+      - name: Run tests and generate coverage report
+        run: |
+          pytest --cov=src --cov=worker --cov-report=xml
       - name: Wait for PostgreSQL to be ready
         run: |
           for i in {1..10}; do
@@ -76,55 +49,8 @@ jobs:
             echo "Waiting for PostgreSQL..."
             sleep 3
           done
-
-      - name: Run tests and generate coverage report
-        run: |
-          pytest --cov=src --cov=worker --cov-report=xml
-
-      - name: Wait for SonarQube to be ready
-        run: |
-          echo "[!] Waiting for SonarQube..."
-          for i in {1..30}; do
-            if curl -s http://localhost:9000/api/system/health | grep -q '"health":"GREEN"'; then
-              echo "[>] SonarQube is ready!"
-              break
-            fi
-            sleep 5
-          done
-
-      - name: Run SonarQube analysis
-        run: |
-          docker run --rm \
-            -e SONAR_HOST_URL="http://localhost:9000" \
-            -e SONAR_LOGIN="admin" \
-            -e SONAR_PASSWORD="admin" \
-            -v "$(pwd):/usr/src" sonarsource/sonar-scanner-cli:latest \
-            -Dsonar.projectKey=ANB-rising-stars-showcase \
-            -Dsonar.sources=src,worker \
-            -Dsonar.tests=tests \
-            -Dsonar.python.coverage.reportPaths=coverage.xml \
-            -Dsonar.sourceEncoding=UTF-8
-
-      - name: Generate formatted HTML report
-        run: |
-          mkdir -p sonar-report
-          metrics="bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,alert_status"
-          response=$(curl -s "http://localhost:9000/api/measures/component?component=ANB-rising-stars-showcase&metricKeys=$metrics")
-
-          echo '<html><head><meta charset="UTF-8"><style>
-          body{font-family:Arial;background:#f7f9fc;padding:20px;}
-          table{border-collapse:collapse;width:70%;margin:auto;background:#fff;box-shadow:0 0 10px rgba(0,0,0,0.1);}
-          th,td{padding:12px;text-align:left;border-bottom:1px solid #ddd;}
-          th{background:#007bff;color:white;}
-          tr:hover{background:#f1f1f1;}
-          h1{text-align:center;color:#007bff;}
-          </style></head><body><h1>SonarQube Analysis Report</h1><table><tr><th>Metric</th><th>Value</th></tr>' > sonar-report/report.html
-
-          echo "$response" | jq -r '.component.measures[] | "<tr><td>\(.metric)</td><td>\(.value)</td></tr>"' >> sonar-report/report.html
-          echo '</table></body></html>' >> sonar-report/report.html
-
-      - name: Upload HTML report as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sonarqube-html-report
-          path: sonar-report/report.html
+      - name: Run SonarCloud analysis
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
