@@ -63,6 +63,11 @@ jobs:
             sleep 3
           done
 
+      - name: Create SonarQube database
+        run: |
+          PGPASSWORD=root psql -h localhost -U postgres -c "CREATE DATABASE sonar;"
+          echo "[>] Database 'sonar' created for SonarQube."
+
       - name: Run tests and generate coverage report
         run: |
           pytest --cov=src --cov=worker --cov-report=xml
