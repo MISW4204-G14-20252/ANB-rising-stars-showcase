@@ -2,7 +2,7 @@ name: SonarCloud Analysis
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main ]
 
 jobs:
   sonarqube:
@@ -22,6 +22,7 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,9 +37,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+
       - name: Run tests and generate coverage report
         run: |
-          pytest --cov=src --cov=worker --cov-report=xml
+          pytest --cov=src --cov=worker --cov-report=xml --cov-fail-under=70
+
       - name: Wait for PostgreSQL to be ready
         run: |
           for i in {1..10}; do
@@ -49,8 +52,42 @@ jobs:
             echo "Waiting for PostgreSQL..."
             sleep 3
           done
+
       - name: Run SonarCloud analysis
         uses: SonarSource/sonarcloud-github-action@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
+
+  api-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Run API tests with Newman
+        run: |
+          echo "[>] Searching for Postman collections in docs/..."
+          collections=$(find docs -type f -name "*.postman_collection.json")
+
+          if [ -z "$collections" ]; then
+            echo "[!] No Postman collections found in docs/. Skipping Newman tests."
+            exit 0
+          fi
+
+          for collection in $collections; do
+            echo "[>] Running Newman tests for: $collection"
+            newman run "$collection" \
+              -e docs/ANB-env.postman_environment.json \
+              --reporters cli,junit \
+              --reporter-junit-export newman-results.xml
+          done

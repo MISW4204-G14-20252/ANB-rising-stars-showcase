@@ -48,7 +48,7 @@
 						{
 							"key": "video_file",
 							"type": "file",
-							"src": "/C:/Users/javier/Documents/20252_code/MISW4301/ANB-rising-stars/videos/unprocessed-videos/input_m30s.mp4"
+							"src": "{{VIDEO_PATH}}"
 						}
 					]
 				},
