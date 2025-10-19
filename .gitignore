@@ -2,3 +2,6 @@ venv/
 db.sqlite3
 __pycache__/
 postgres-data/
+.pytest_cache/
+.coverage
+coverage.xml
