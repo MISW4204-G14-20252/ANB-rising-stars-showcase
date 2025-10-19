@@ -67,3 +67,25 @@ class VideoOut(VideoBase):
 
     class Config:
         orm_mode = True
+
+class VideoPublicOut(BaseModel):
+    id: int
+    title: str
+    processed_url: Optional[str] = None
+    votes_count: int
+
+    class Config:
+        orm_mode = True
+
+
+class Vote(BaseModel):
+    video_id: int
+    user_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class RankingOut(BaseModel):
+    jugador: str
+    votos_acumulados: int
