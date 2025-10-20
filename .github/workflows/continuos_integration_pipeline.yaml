@@ -39,10 +39,6 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Run tests and generate coverage report
-        run: |
-          pytest --cov=src --cov=worker --cov-report=xml --cov-fail-under=70
-
       - name: Wait for PostgreSQL to be ready
         run: |
           for i in {1..10}; do
@@ -53,6 +49,16 @@ jobs:
             echo "Waiting for PostgreSQL..."
             sleep 3
           done
+
+      - name: Run tests and generate coverage report
+        run: |
+          pytest --cov=src --cov=worker --cov-report=xml:coverage.xml --cov-fail-under=70
+
+      - name: Verify coverage.xml
+        run: |
+          echo "Current directory: $(pwd)"
+          find . -name "coverage.xml"
+          file coverage.xml || echo "coverage.xml not found"
 
       - name: Run SonarCloud analysis
         uses: SonarSource/sonarcloud-github-action@v2
