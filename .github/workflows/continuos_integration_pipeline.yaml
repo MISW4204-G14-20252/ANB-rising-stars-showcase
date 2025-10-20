@@ -94,6 +94,5 @@ jobs:
         run: |
           echo "[>] Searching for Postman collections in docs/..."
           newman run "./collections/ANB-Rising-stars.postman_collection.json" \
-            -e docs/ANB-env.postman_environment.json \
             --reporters cli,junit \
             --reporter-junit-export newman-results.xml
