@@ -1,5 +1,29 @@
 # MISW 4204 - ANB Rising Stars Showcase
 
+## Integrantes
+
+Juan Leonardo Rangel Barrera
+
+jl.rangel@uniandes.edu.co
+
+
+
+Javier Steven Barrera Toro
+
+js.barrerat1@uniandes.edu.co
+
+
+
+Nicolas Lara Gómez
+
+n.lara@uniandes.edu.co
+
+
+
+Dionny Santiago Cardenas Salazar
+
+ds.cardenass@uniandes.edu.co
+
 ## Para ejecutar este proyecto
 
 1. Crear un entorno virtual con `venv` (este módulo ya viene instalado) y activarlo:
@@ -46,4 +70,5 @@ $ celery -A worker.video_proc worker --pool=solo --loglevel=info
 $ python -i worker/video_proc.py
 
 >>> procesar_video.delay("input_l30s.mp4")
+
 ```
