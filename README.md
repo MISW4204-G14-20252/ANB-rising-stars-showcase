@@ -3,26 +3,26 @@
 ## Integrantes
 
 Juan Leonardo Rangel Barrera
-
 jl.rangel@uniandes.edu.co
 
-
-
 Javier Steven Barrera Toro
-
 js.barrerat1@uniandes.edu.co
 
-
-
 Nicolas Lara Gómez
-
 n.lara@uniandes.edu.co
 
-
-
 Dionny Santiago Cardenas Salazar
-
 ds.cardenass@uniandes.edu.co
+
+## Entrega 1
+
+- [Documentación](./docs/Entrega_1)
+- [Sustentacion](./sustentacion/Entrega_1)
+- [Capacity planning](./capacity-planning/plan_de_pruebas.md)
+
+>[!important]
+> Adicionalmente, el detalle de todos los entregables se encuentra en la [Wiki](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/wiki).
+
 
 ## Para ejecutar este proyecto
 
@@ -72,3 +72,4 @@ $ python -i worker/video_proc.py
 >>> procesar_video.delay("input_l30s.mp4")
 
 ```
+
