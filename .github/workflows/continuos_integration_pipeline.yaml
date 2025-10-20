@@ -52,7 +52,9 @@ jobs:
 
       - name: Run tests and generate coverage report
         run: |
-          pytest --cov=src --cov=worker --cov-report=xml:coverage.xml --cov-fail-under=70
+          pytest --cov=src --cov=worker --cov-report=xml:coverage.xml --cov-fail-under=70 --cov-config=.coveragerc
+          echo "First lines of coverage.xml:"
+          head -n 10 coverage.xml
 
       - name: Verify coverage.xml
         run: |
