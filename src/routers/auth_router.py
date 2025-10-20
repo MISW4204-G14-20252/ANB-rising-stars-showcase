@@ -59,18 +59,18 @@ async def create_user(user: UsuarioCreateSchema, db: Session = Depends(get_db)):
 
 @auth_router.post('/login', response_model = TokenData)
 async def login_for_access_token(user: UsuarioLoginSchema, db: Session = Depends(get_db)):
-    user_db = db.query(Usuario).filter(Usuario.nombre == user.nombre).first()
+    user_db = db.query(Usuario).filter(Usuario.email == user.email).first()
     if not user_db:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST, detail = 'El usuario no es correcto.')
 
-    if not user.contrasena == user_db.contrasena:
+    if not user.password == user_db.password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail = 'La contraseña no es correcta.')
 
     # registrar_log.delay(user.nombre, datetime.now(timezone.utc))
     expires_delta = timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token_data={'sub': user_db.nombre,
+    access_token_data={'sub': user_db.email,
                        'exp': datetime.now(timezone.utc) + expires_delta}
     return {'access_token': jwt.encode(access_token_data, SECRET_KEY, algorithm = ALGORITHM), 'token_type': 'bearer'}
 
@@ -92,3 +92,30 @@ async def verify_token(token: str = Depends(oauth2_scheme)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail = 'Credenciales de autenticación inválidas.',
             headers = {'WWW-Authenticate': 'Bearer'})
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """
+    Decodifica el token JWT y devuelve el usuario autenticado.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciales de autenticación inválidas.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(Usuario).filter(Usuario.email == username).first()
+    if user is None:
+        raise credentials_exception
+
+    return user

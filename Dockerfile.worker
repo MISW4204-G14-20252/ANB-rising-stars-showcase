@@ -1,0 +1,25 @@
+# First stage: base environment
+FROM python:3.11-alpine AS base
+
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apk add --no-cache ffmpeg
+
+COPY ./requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Second stage: development environment
+FROM base AS development
+
+WORKDIR /app
+
+COPY ./src ./src
+COPY ./worker ./worker
+COPY ./videos/nba-rs-normalized.mp4 ./videos/nba-rs-normalized.mp4
+
+EXPOSE 9000
+
+CMD ["celery", "-A", "worker.video_processor_task", "worker", "--loglevel=info", "-P", "solo"]

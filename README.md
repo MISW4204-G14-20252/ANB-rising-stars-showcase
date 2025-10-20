@@ -35,3 +35,15 @@ $ docker compose -f ./docker-compose.dev.yaml up
 $ docker compose -f ./docker-compose.dev.yaml stop
 $ docker compose -f ./docker-compose.dev.yaml down
 ```
+
+## Agregar video
+
+```bash
+$ celery -A worker.video_proc worker --pool=solo --loglevel=info
+```
+
+```bash
+$ python -i worker/video_proc.py
+
+>>> procesar_video.delay("input_l30s.mp4")
+```

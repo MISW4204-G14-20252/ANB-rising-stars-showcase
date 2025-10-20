@@ -1,0 +1,98 @@
+name: SonarCloud Analysis
+
+on:
+  push:
+    branches: [ main, dev ]
+  workflow_dispatch:
+
+jobs:
+  sonarqube:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: root
+          POSTGRES_DB: ANB
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run tests and generate coverage report
+        run: |
+          pytest --cov=src --cov=worker --cov-report=xml --cov-fail-under=70
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..10}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "[>] PostgreSQL is ready!"
+              break
+            fi
+            echo "Waiting for PostgreSQL..."
+            sleep 3
+          done
+
+      - name: Run SonarCloud analysis
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+  api-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Start services with Docker Compose
+        run: |
+          echo "[>] Starting Docker Compose services..."
+          docker compose up -d
+          echo "[>] Waiting for FastAPI service to be ready..."
+
+          for i in {1..10}; do
+            if curl -s http://localhost:80/docs > /dev/null; then
+              echo "[>] FastAPI is up!"
+              break
+            fi
+            echo "[>] Waiting for FastAPI..."
+            sleep 5
+          done
+
+      - name: Run API tests with Newman
+        run: |
+          echo "[>] Searching for Postman collections in docs/..."
+          newman run "./collections/ANB-Rising-stars.postman_collection.json" \
+            --reporters cli,junit \
+            --reporter-junit-export newman-results.xml
