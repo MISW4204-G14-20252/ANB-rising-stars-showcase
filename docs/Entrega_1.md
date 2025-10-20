@@ -101,3 +101,7 @@ En este se puede observar:
 - El estado del quality gate se en cuentra **aprobado**
 
 <img alt="image" src="https://github.com/user-attachments/assets/61cf8d43-9827-400e-9a08-2aad2908c532" />
+
+# Pipeline de integración continua
+
+Se implementó un pipeline de integración continua con Github Actions, lo que hace este es realizar las pruebas unitarias usando `pytest` y de API utilizando `newman`. Sobre las pruebas que se hacen con `pytest` se exporta un archivo sobre la cobertura y luego este es analizado por Sonarqube para presentar un reporte más detallado sobre el código en el repositorio.
