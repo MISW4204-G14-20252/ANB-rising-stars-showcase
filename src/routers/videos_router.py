@@ -101,7 +101,10 @@ async def upload_video(
         )
 
     if not (MIN_T <= dur <= MAX_T):
-        os.remove(file_path)
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
         raise HTTPException(
             status_code=400,
             detail=f"Duración inválida: {dur:.1f}s (debe estar entre {MIN_T} y {MAX_T} segundos).",
