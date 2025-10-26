@@ -8,6 +8,7 @@ from src.routers.auth_router import get_current_user
 from src.models.db_models import Video, Usuario
 import src.schemas.pydantic_schemas as schemas
 from uuid import uuid4
+import aiofiles
 from pymediainfo import MediaInfo
 from pathlib import Path
 import sys
@@ -66,25 +67,44 @@ async def upload_video(
         )
     await video_file.seek(0)
 
-    # Generar nombre único
-    unique_name = f"{uuid4()}_{video_file.filename}"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    file_path = os.path.join(UPLOAD_DIR, unique_name)
+    # Generar nombre único y seguro (no usar el filename del usuario directamente)
+    # Extraer y validar extensión
+    ext = Path(video_file.filename).suffix.lower()
+    if ext != ".mp4":
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos MP4")
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(video_file.file, buffer)
+    # Nombre seguro: UUID.hex + extensión
+    unique_name = f"{uuid4().hex}{ext}"
+
+    # Asegurar directorio de subida
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    file_path = UPLOAD_DIR / unique_name
+
+    # Guardar archivo de forma segura (async)
+    # ya leímos el contenido para validar tamaño, reutilizamos 'contents'
+    try:
+        async with aiofiles.open(file_path, "wb") as out_f:
+            await out_f.write(contents)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error guardando el archivo: {e}")
 
     # Validar duración (min 20sgs max 60 sgs)
     dur, width, height = _video_info(Path(file_path))
 
-    if dur == 0.0:
-        os.remove(file_path)
+    if dur <= 0.0:
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
         raise HTTPException(
             status_code=400, detail="No se pudo determinar la duración del video."
         )
 
     if not (MIN_T <= dur <= MAX_T):
-        os.remove(file_path)
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
         raise HTTPException(
             status_code=400,
             detail=f"Duración inválida: {dur:.1f}s (debe estar entre {MIN_T} y {MAX_T} segundos).",
@@ -92,7 +112,10 @@ async def upload_video(
 
     # Validar resolución: 1080p o superior
     if height < 1080 and width < 1920:
-        os.remove(file_path)
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
         raise HTTPException(
             status_code=400,
             detail=f"Resolución demasiado baja: {width}x{height} (mínimo 1920x1080).",
@@ -212,10 +235,10 @@ def delete_video_by_id(
         )
 
     # Eliminar archivo del sistema
-    file_path = os.path.join(UPLOAD_DIR, video.filename)
-    if os.path.exists(file_path):
+    file_path = UPLOAD_DIR / video.filename
+    if file_path.exists():
         try:
-            os.remove(file_path)
+            file_path.unlink()
         except Exception as e:
             print(f"No se pudo borrar el archivo físico: {e}")
 
