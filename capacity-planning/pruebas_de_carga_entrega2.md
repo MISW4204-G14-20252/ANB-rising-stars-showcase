@@ -4,7 +4,7 @@
 
 ---
 
-## 1. ⚙Metodología y Criterios de Fallo
+## 1. Metodología y Criterios de Fallo
 
 ### 1.1. Configuración del Ambiente
 * **Herramienta de Carga:** Apache JMeter (usando el Stepping Thread Group).
@@ -90,4 +90,5 @@ El monitoreo (Prometheus/Grafana) demuestra que la latencia del *endpoint* se di
 
 **Salida Esperada (Resumen de Capacidad):**
 El sistema no soporta la carga sostenida. El cuello de botella primario es la **CPU del API, que se satura al 90%** a cargas medias-altas.
+
 
