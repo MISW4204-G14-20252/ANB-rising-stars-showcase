@@ -24,9 +24,9 @@ ds.cardenass@uniandes.edu.co
 > Adicionalmente, el detalle de todos los entregables se encuentra en la [Wiki](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/wiki).
 
 ## Entrega 2 
-- [Documentación](./docs/Entrega_2)
-- [Sustentacion](./sustentacion/Entrega_2)
-- [Capacity_planning](./capacity-planning)
+- [Documentación](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/docs/Entrega_2.md)
+- [Sustentacion](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/sustentacion/Entrega_2.md)
+- [Capacity_planning](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/capacity-planning/pruebas_de_carga_entrega2.md)
 
 ## Para ejecutar este proyecto
 
@@ -76,5 +76,6 @@ $ python -i worker/video_proc.py
 >>> procesar_video.delay("input_l30s.mp4")
 
 ```
+
 
 
