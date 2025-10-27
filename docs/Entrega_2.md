@@ -43,25 +43,25 @@ Este documento resume los cambios que aplicamos en el repositorio para abordar l
 
 ## Mapeo de issues Sonar (resumen)
 
-- Do not construct paths from user-controlled data
-  - Archivo: `src/routers/videos_router.py`
-  - Acción: Generar nombre seguro (UUID) y usar sólo la extensión; no usar el filename entero del usuario.
+- No construir rutas a partir de datos controlados por el usuario  
+  - **Archivo:** `src/routers/videos_router.py`  
+  - **Acción:** Generar un nombre seguro (UUID) y conservar únicamente la extensión; no utilizar el nombre completo del archivo proporcionado por el usuario.  
 
-- Use an asynchronous file API instead of synchronous open() in this async function
-  - Archivo: `src/routers/videos_router.py`
-  - Acción: reemplazar `open(...)` por `aiofiles.open(...)` y escribir de forma asíncrona.
+- Usar una API de archivos asíncrona en lugar de `open()` sincrónico dentro de una función `async`  
+  - **Archivo:** `src/routers/videos_router.py`  
+  - **Acción:** Reemplazar `open(...)` por `aiofiles.open(...)` y realizar las operaciones de escritura de forma asíncrona.  
 
-- Do not perform equality checks with floating point values
-  - Archivo: `src/routers/videos_router.py`
-  - Acción: `if dur == 0.0` -> `if dur <= 0.0`.
+- No realizar comparaciones de igualdad con valores de punto flotante  
+  - **Archivo:** `src/routers/videos_router.py`  
+  - **Acción:** Cambiar `if dur == 0.0` por `if dur <= 0.0`.  
 
-- Functions declared async should use await
-  - Archivo: `src/routers/auth_router.py`
-  - Acción: Convertir funciones a síncronas cuando no usan `await`.
+- Las funciones declaradas como `async` deben usar `await`  
+  - **Archivo:** `src/routers/auth_router.py`  
+  - **Acción:** Convertir las funciones a síncronas cuando no utilicen `await`.  
 
-- Do not mix `os.remove` with `Path` objects
-  - Archivo: `src/routers/videos_router.py`
-  - Acción: usar `Path.unlink()` y manejar errores con try/except.
+- No mezclar `os.remove` con objetos `Path`  
+  - **Archivo:** `src/routers/videos_router.py`  
+  - **Acción:** Utilizar `Path.unlink()` y manejar los posibles errores mediante un bloque `try/except`.  
 
 ---
 
@@ -79,3 +79,17 @@ Este documento resume los cambios que aplicamos en el repositorio para abordar l
 ## Diagrama de Despliegue
 <img src="https://github.com/user-attachments/assets/57926150-ad65-4f0c-819c-a857f18aa91f" style="max-width:100%; height:auto;" alt="imagen" />
 
+## Despliegue en AWS
+
+Durante esta entrega se desplegaron los componentes principales de la aplicación en la nube pública de AWS, siguiendo el modelo de referencia propuesto. En total se configuraron y ejecutaron seis servicios: un worker, un servidor NFS, una API REST, un servidor web Nginx, un servidor Redis y una base de datos en Amazon RDS. Todos los servicios fueron desplegados sobre instancias de Amazon EC2 y aislados dentro de una misma VPC, lo que permitió establecer un entorno controlado y seguro para la comunicación entre los diferentes componentes. Asimismo, se configuraron las reglas de ingreso y egreso del firewall (Security Groups) para permitir el tráfico necesario entre las máquinas virtuales, garantizando así la protección de los servicios expuestos.
+
+Para esta fase se optó por instalar directamente los servicios en las máquinas virtuales, sin utilizar contenedores Docker, con el objetivo de tener un mayor control sobre el entorno de configuración inicial. Sin embargo, se identificó que este enfoque ralentiza la replicabilidad y la puesta en marcha de nuevos entornos, por lo que se decidió que, para futuras entregas, se adoptará un esquema basado en contenedores Docker. De esta forma, se instalará Docker en cada instancia EC2 y se ejecutará el servicio correspondiente mediante archivos docker-compose.yml, simplificando el despliegue y asegurando la consistencia entre entornos.
+
+Para optimizar este proceso, se planea generar una plantilla (AMI) de máquina virtual con Docker preinstalado y configurado, a partir de la cual se podrán lanzar nuevas instancias que solo requerirán ejecutar el comando `docker compose up -d [componente]` para levantar el servicio deseado. Este cambio permitirá una gestión más ágil del ciclo de vida de los servicios, una mejor reproducibilidad de los entornos y una reducción significativa en los tiempos de aprovisionamiento y despliegue.
+
+### Sobre los servicios utilizados
+
+Para esta entrega se utilizaron los siguientes servicios en la nube:
+- Amazon EC2 para la ejecución del servidor web, el worker y el servidor NFS
+- Amazon RDS para la gestión de la base de datos relacional
+- Amazon VPC para el aislamiento y la comunicación segura entre las instancias
