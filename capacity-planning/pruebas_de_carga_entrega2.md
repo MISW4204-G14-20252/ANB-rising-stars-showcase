@@ -91,4 +91,98 @@ El monitoreo (Prometheus/Grafana) demuestra que la latencia del *endpoint* se di
 **Salida Esperada (Resumen de Capacidad):**
 El sistema no soporta la carga sostenida. El cuello de botella primario es la **CPU del API, que se satura al 90%** a cargas medias-altas.
 
+# Escenario 2: Capacidad del worker (Procesamiento de videos)
+
+## Objetivo de la prueba
+Evaluar el rendimiento del worker encargado del procesamiento de videos al variar la cantidad de **hilos de ejecución (threads)** en un entorno con **2 CPU virtuales (EC2)**.  
+El propósito es determinar cómo escala el tiempo de procesamiento con cargas concurrentes y analizar posibles cuellos de botella o interferencias de E/S (lectura/escritura simultánea).
+
+---
+
+## Forma de ejecución
+
+Se ejecutó el worker con el siguiente comando, variando el parámetro `--concurrency=n`:
+
+```bash
+sudo -E $(pwd)/venv/bin/celery -A worker.video_processor_task worker --loglevel=info -P threads --concurrency=n -E
+```
+
+Donde **n = 1, 2, 4** según la prueba.  
+Cada ejecución consistió en **5 videos de 50 MB** procesados de forma concurrente.
+
+---
+
+## Resultados de las pruebas
+
+| Hilos | Tiempos individuales (s) | Promedio (s) | Duración total (s) | Estimado 100MB (s) |
+|:------|:---------------------------|:-------------|:-------------------|:--------------------|
+| 1 hilo | 41.85, 42.58, 42.57, 42.35, 41.98 | 42.27 | 187 | 84.53 |
+| 2 hilos | 81.19, 81.45, 81.45, 81.5, 42.31 | 73.58 | 157 | 147.16 |
+| 4 hilos | 163.84, 164.43, 164.49, 164.51, 42.54 | 139.96 | 225 | 279.92 |
+
+
+---
+
+## Observaciones y análisis
+
+- El tiempo promedio de procesamiento **aumenta proporcionalmente con el número de hilos**, lo que sugiere una **división de recursos del CPU** más que una ganancia paralela.
+- El **quinto video** en cada lote mantiene un tiempo cercano a **42 segundos**, consistente con el rendimiento base de un solo hilo.
+- Esto indica que los hilos concurrentes comparten el mismo recurso de CPU y **no hay paralelismo real** (solo concurrencia simulada).
+- Posible causa: **lectura/escritura simultánea sobre archivos con el mismo nombre**, generando **bloqueos o esperas de E/S**.
+- En el mismo entorno, usar el mismo nombre de archivo podría provocar **sobrescrituras temporales** y retrasos acumulados.
+
+---
+
+## Conclusiones
+
+- Con **1 hilo**, el sistema mantiene una estabilidad de ~42s por video.  
+- Con **2 hilos**, el tiempo promedio se **duplica (~81s)**.  
+- Con **4 hilos**, el tiempo promedio **se cuadruplica (~164s)**.  
+- Esto demuestra que **el CPU de 2 hilos no soporta paralelismo real** para tareas intensivas de E/S.  
+- Para mejorar rendimiento se recomienda:
+  - Asignar **número de workers <= núcleos físicos del CPU**.
+  - Evitar **nombres de archivo idénticos** durante la carga concurrente.
+
+---
+
+## Capturas de ejecución
+
+- Ejecución concurrente
+
+<img width="1146" height="166" alt="imagen" src="https://github.com/user-attachments/assets/534c7895-f1fa-4a51-8740-a4303c80347a" />
+
+
+- Worker en funcionamiento
+
+<img width="1132" height="467" alt="imagen" src="https://github.com/user-attachments/assets/3c3892c9-2df4-445b-84da-19be4cb9703c" />
+
+
+---
+
+## Monitoreo de CPU y recursos durante la ejecución
+
+- CPU:
+
+<img width="1744" height="813" alt="imagen" src="https://github.com/user-attachments/assets/476fd107-a05b-4c08-a203-445e5689702f" />
+
+Las pruebas comenzaron desde el tiempo 03:30:21, y acabaron en 03:43:39
+
+| Hilos | Tiempo de inicio | Tiempo de finalización | Duración total (min:seg) |
+|:------|:------------------|:------------------------|:--------------------------|
+| 1 hilo | 03:30:21 | 03:33:28 | 03:07 |
+| 2 hilos | 03:34:51 | 03:37:28 | 02:37 |
+| 4 hilos | 03:39:54 | 03:43:39 | 03:45 |
+
+- Network in:
+
+<img width="1752" height="808" alt="imagen" src="https://github.com/user-attachments/assets/3bcbc767-cd4c-4217-8bed-347919aef32e" />
+
+- Network out:
+- 
+<img width="1750" height="813" alt="imagen" src="https://github.com/user-attachments/assets/78115ead-21aa-49d9-9b11-d5c11d18e541" />
+
+## Resumen general
+
+Estas pruebas confirman que la capacidad de procesamiento del worker está limitada por la cantidad de hilos de CPU y que **la concurrencia sin aislamiento de E/S reduce el rendimiento total**.  
+El escalamiento debe evaluarse en una instancia con más núcleos o mediante workers independientes con colas separadas.
 
