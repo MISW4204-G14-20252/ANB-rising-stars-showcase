@@ -85,6 +85,7 @@ El monitoreo (Prometheus/Grafana) demuestra que la latencia del *endpoint* se di
 
 **Gráfico de Utilización de CPU del Servidor Web (Web Server):**
 
+![https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/capacity-planning/CPU%20Usage.png](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/capacity-planning/CPU%20Usage.png)
 
 * **Causa Raíz:** El *endpoint* de subida consume excesivos ciclos de CPU, lo que provoca que, al aumentar la concurrencia, la **Utilización de CPU se sature hasta el 90\%** (pico de saturación). Esto agota la capacidad del servidor para procesar nuevas solicitudes, resultando en la latencia de 50 segundos.
 
@@ -185,4 +186,5 @@ Las pruebas comenzaron desde el tiempo 03:30:21, y acabaron en 03:43:39
 
 Estas pruebas confirman que la capacidad de procesamiento del worker está limitada por la cantidad de hilos de CPU y que **la concurrencia sin aislamiento de E/S reduce el rendimiento total**.  
 El escalamiento debe evaluarse en una instancia con más núcleos o mediante workers independientes con colas separadas.
+
 
