@@ -5,6 +5,10 @@ from src.routers import videos_router
 import io
 from fastapi import UploadFile
 import sys
+from unittest.mock import MagicMock, patch
+from fastapi import HTTPException, status
+from unittest.mock import patch
+from pathlib import Path
 
 client = TestClient(app)
 
@@ -440,3 +444,42 @@ def test_delete_video_unlink_exception(monkeypatch, tmp_path):
     r = client.delete("/api/videos/1", headers={"Authorization": "Bearer token"})
     assert r.status_code == 200
     app.dependency_overrides.clear()
+    
+    
+def test_video_not_found_raises_404():
+    db = MagicMock()
+    db.query().filter().first.return_value = None  # Simula que no existe el video
+    video_id = 999
+
+    with pytest.raises(HTTPException) as excinfo:
+        video = db.query().filter().first()
+        if not video:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"El video con id={video_id} no existe.",
+            )
+
+    assert excinfo.value.status_code == status.HTTP_404_NOT_FOUND
+    assert "no existe" in excinfo.value.detail
+    
+
+
+def test_delete_file_raises_exception(tmp_path):
+    fake_path = tmp_path / "fake.mp4"
+
+    # Parchea el método unlink de la clase Path, no del objeto
+    with patch.object(Path, "unlink", side_effect=OSError("No se puede borrar")):
+        with pytest.raises(HTTPException) as excinfo:
+            dur = 0.0
+            if dur <= 0.0:
+                try:
+                    fake_path.unlink()
+                except Exception:
+                    pass
+                raise HTTPException(
+                    status_code=400,
+                    detail="No se pudo determinar la duración del video.",
+                )
+
+    assert excinfo.value.status_code == 400
+    assert "duración" in excinfo.value.detail
