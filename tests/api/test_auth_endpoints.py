@@ -143,22 +143,19 @@ def test_login_success():
 # ---------------------------------------------------------------------
 # 6️⃣ verify_token – Token inválido
 # ---------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_verify_token_invalid():
+def test_verify_token_invalid():
     """Debe lanzar 401 si el token es inválido"""
     from fastapi import HTTPException
     from src.routers.auth_router import verify_token
-
     with pytest.raises(HTTPException) as excinfo:
-        await verify_token("token-falso")
+        verify_token("token-falso")
     assert excinfo.value.status_code == 401
 
 
 # ---------------------------------------------------------------------
 # 7️⃣ get_current_user – Usuario no existe
 # ---------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_get_current_user_not_found(monkeypatch):
+def test_get_current_user_not_found(monkeypatch):
     """Debe lanzar 401 si el usuario no existe"""
     from src.routers.auth_router import get_current_user
 
@@ -173,7 +170,7 @@ async def test_get_current_user_not_found(monkeypatch):
 
     from fastapi import HTTPException
     with pytest.raises(HTTPException) as excinfo:
-        await get_current_user(fake_token, FakeDB())
+        get_current_user(fake_token, FakeDB())
     assert excinfo.value.status_code == 401
     
     # ---------------------------------------------------------------------
@@ -224,8 +221,7 @@ def test_signup_success(monkeypatch):
 # ---------------------------------------------------------------------
 # 9️⃣ verify_token – Token válido
 # ---------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_verify_token_valid(monkeypatch):
+def test_verify_token_valid(monkeypatch):
     """Debe devolver el username (correo) si el token es válido"""
     from src.routers.auth_router import verify_token
 
@@ -233,5 +229,5 @@ async def test_verify_token_valid(monkeypatch):
     payload = {"sub": "user@correo.com"}
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-    username = await verify_token(token)
+    username = verify_token(token)
     assert username == "user@correo.com"
