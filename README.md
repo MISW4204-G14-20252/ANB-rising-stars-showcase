@@ -20,9 +20,6 @@ ds.cardenass@uniandes.edu.co
 - [Sustentacion](./sustentacion/Entrega_1)
 - [Capacity planning](./capacity-planning/plan_de_pruebas.md)
 
->[!important]
-> Adicionalmente, el detalle de todos los entregables se encuentra en la [Wiki](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/wiki).
-
 ## Entrega 2 
 - [Documentación](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/docs/Entrega_2.md)
 - [Sustentacion](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/sustentacion/Entrega_2.md)
