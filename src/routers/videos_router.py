@@ -1,7 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Form
 from sqlalchemy.orm import Session
-import shutil
-import os
 import logging
 from src.db.database import get_db
 from src.routers.auth_router import get_current_user

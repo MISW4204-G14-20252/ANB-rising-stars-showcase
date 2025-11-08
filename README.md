@@ -28,6 +28,11 @@ ds.cardenass@uniandes.edu.co
 - [Sustentacion](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/sustentacion/Entrega_2.md)
 - [Capacity_planning](https://github.com/MISW4204-G14-20252/ANB-rising-stars-showcase/blob/main/capacity-planning/pruebas_de_carga_entrega2.md)
 
+## Entrega 3
+- [Documentación](./docs/Entrega_3.md)
+- [Sustentacion](./sustentacion/Entrega_3.md)
+- [Capacity_planning](./capacity-planning/pruebas_de_carga_entrega3.md)
+
 ## Para ejecutar este proyecto
 
 1. Crear un entorno virtual con `venv` (este módulo ya viene instalado) y activarlo:
