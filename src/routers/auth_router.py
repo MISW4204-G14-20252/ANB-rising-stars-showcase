@@ -12,8 +12,6 @@ from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 
 
-# from worker.tasks import registrar_log
-
 SECRET_KEY = "secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -64,7 +62,7 @@ async def login_for_access_token(user: UsuarioLoginSchema, db: Session = Depends
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST, detail = 'El usuario no es correcto.')
 
-    if not user.password == user_db.password:
+    if user.password != user_db.password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail = 'La contraseña no es correcta.')
 
@@ -77,7 +75,7 @@ async def login_for_access_token(user: UsuarioLoginSchema, db: Session = Depends
 # use this function as a dependency in routes that require authentication
 # auth: HTTPAuthorizationCredentials = Depends(bearer) as parameter
 # and the username = verify_token(auth.credentials)
-async def verify_token(token: str = Depends(oauth2_scheme)):
+def verify_token(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get('sub')
@@ -93,13 +91,11 @@ async def verify_token(token: str = Depends(oauth2_scheme)):
             detail = 'Credenciales de autenticación inválidas.',
             headers = {'WWW-Authenticate': 'Bearer'})
 
-async def get_current_user(
+def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    """
-    Decodifica el token JWT y devuelve el usuario autenticado.
-    """
+    """Decodifica el token JWT y devuelve el usuario autenticado."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Credenciales de autenticación inválidas.",

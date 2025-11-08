@@ -1,6 +1,31 @@
 version: "3.9"
 
 services:
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "localhost:host-gateway"
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=123456
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+
   db:
     image: postgres:17.4
     container_name: postgres_anb_db
@@ -46,7 +71,7 @@ services:
         condition: service_started
     restart: on-failure:5
     environment:
-      DATABASE_URL: postgresql://postgres:root@db:5432/ANB
+      DATABASE_URL: postgresql://postgres:YzHsOV599vAtgqiugt9Z@database-1.cgepbyv21y25.us-east-1.rds.amazonaws.com:5432/ANB
       REDIS_URL: redis://redis:6379/0
     volumes:
       - ./videos/unprocessed-videos:/app/videos/unprocessed-videos
@@ -94,3 +119,4 @@ networks:
 volumes:
   pg-data:
     driver: local
+  grafana_data:
