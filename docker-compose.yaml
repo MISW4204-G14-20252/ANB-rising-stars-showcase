@@ -56,7 +56,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./Docker/Dockerfile.api
     container_name: anb_fastapi_back
     networks:
       - backend
@@ -80,7 +80,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: ./Dockerfile.worker
+      dockerfile: ./Docker/Dockerfile.worker
     container_name: anb_celery_worker
     ports:
       - "9000:9000"
