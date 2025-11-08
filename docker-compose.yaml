@@ -71,7 +71,7 @@ services:
         condition: service_started
     restart: on-failure:5
     environment:
-      DATABASE_URL: postgresql://postgres:root@db:5432/ANB
+      DATABASE_URL: postgresql://postgres:YzHsOV599vAtgqiugt9Z@database-1.cgepbyv21y25.us-east-1.rds.amazonaws.com:5432/ANB
       REDIS_URL: redis://redis:6379/0
     volumes:
       - ./videos/unprocessed-videos:/app/videos/unprocessed-videos

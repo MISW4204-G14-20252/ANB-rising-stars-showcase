@@ -291,10 +291,10 @@
 									]
 								},
 								"url": {
-									"raw": "http://localhost:80/api/videos/upload",
+									"raw": "http://23.22.61.83:80/api/videos/upload",
 									"protocol": "http",
 									"host": [
-										"localhost"
+										"23.22.61.83"
 									],
 									"port": "80",
 									"path": [
@@ -352,10 +352,10 @@
 									]
 								},
 								"url": {
-									"raw": "http://localhost:80/api/videos/upload",
+									"raw": "http://23.22.61.83:80/api/videos/upload",
 									"protocol": "http",
 									"host": [
-										"localhost"
+										"23.22.61.83"
 									],
 									"port": "80",
 									"path": [
@@ -414,10 +414,10 @@
 									]
 								},
 								"url": {
-									"raw": "http://localhost:80/api/videos/upload",
+									"raw": "http://23.22.61.83:80/api/videos/upload",
 									"protocol": "http",
 									"host": [
-										"localhost"
+										"23.22.61.83"
 									],
 									"port": "80",
 									"path": [
@@ -541,10 +541,10 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "http://localhost:80/api/videos/7",
+									"raw": "http://23.22.61.83:80/api/videos/7",
 									"protocol": "http",
 									"host": [
-										"localhost"
+										"23.22.61.83"
 									],
 									"port": "80",
 									"path": [
@@ -588,7 +588,7 @@
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:80/api"
+			"value": "http://23.22.61.83:80/api"
 		}
 	]
 }
