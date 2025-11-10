@@ -48,12 +48,12 @@ def process_video(video: dict):
         local_output = TMP_DIR / f"{name}_processed.mp4"
 
         # --- 1️⃣ Descargar desde S3 ---
-        logger.info(f"⬇️ Descargando {s3_key_input} desde S3...")
+        logger.info(f" Descargando {s3_key_input} desde S3...")
         if not download_from_s3(s3_key_input, local_source):
             raise Exception(f"No se pudo descargar el archivo desde S3: {s3_key_input}")
 
         # --- 2️⃣ Procesar con FFmpeg ---
-        logger.info(f"🎬 Procesando video {filename}...")
+        logger.info(f" Procesando video {filename}...")
 
         # Paso 1: trim, normalización, resize
         subprocess.run(
@@ -89,7 +89,7 @@ def process_video(video: dict):
         )
 
         # Paso 2: concatenar watermark + clip + watermark
-        logger.info("🎞️ Concatenando con intro y outro (watermark)...")
+        logger.info(" Concatenando con intro y outro (watermark)...")
 
         subprocess.run(
             [
@@ -124,14 +124,14 @@ def process_video(video: dict):
             check=True,
         )
 
-        # --- 3️⃣ Subir resultado a S3 ---
+        # ---  Subir resultado a S3 ---
         processed_key = f"processed-videos/{name}_processed.mp4"
-        logger.info(f"⬆️ Subiendo resultado a S3: {processed_key}")
+        logger.info(f" Subiendo resultado a S3: {processed_key}")
         upload_success = upload_to_s3(local_output, processed_key)
         if not upload_success:
             raise Exception("Error subiendo el video procesado a S3.")
 
-        # --- 4️⃣ Actualizar base de datos ---
+        # --- 4 Actualizar base de datos ---
         logger.info("🗂️ Actualizando base de datos...")
         db = next(get_db())
         db.query(Video).filter(Video.id == video.get("id")).update(
@@ -143,7 +143,7 @@ def process_video(video: dict):
         )
         db.commit()
 
-        logger.info("✅ Video procesado y actualizado correctamente.")
+        logger.info(" Video procesado y actualizado correctamente.")
 
         return {
             "success": True,
@@ -166,7 +166,7 @@ def process_video(video: dict):
         }
 
     except Exception as e:
-        error_msg = f"❌ Error general procesando {filename}: {e}"
+        error_msg = f" Error general procesando {filename}: {e}"
         logger.error(error_msg)
         return {
             "success": False,
@@ -182,7 +182,7 @@ def process_video(video: dict):
                 if f.exists():
                     f.unlink()
             except Exception as cleanup_error:
-                logger.warning(f"⚠️ Error eliminando archivo temporal {f}: {cleanup_error}")
+                logger.warning(f" Error eliminando archivo temporal {f}: {cleanup_error}")
 
         if db:
             db.close()
