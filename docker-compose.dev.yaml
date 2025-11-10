@@ -1,50 +1,4 @@
 services:
-  test:
-      build:
-        context: .
-        dockerfile: ./Docker/Dockerfile.api
-      container_name: anb_tests
-      command: pytest -v tests --cov=src --cov=worker --cov-report=term-missing --cov-report=xml
-      environment:
-        DATABASE_URL: postgresql://postgres:root@db:5432/ANB
-        REDIS_URL: redis://redis:6379/0
-        PYTHONPATH: /app
-      depends_on:
-        db:
-          condition: service_healthy
-        redis:
-          condition: service_started
-      networks:
-        - backend
-      volumes:
-        - ./videos/unprocessed-videos:/app/videos/unprocessed-videos
-        - ./videos/processed-videos:/app/videos/processed-videos
-        - ./tests:/app/tests       
-
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    extra_hosts:
-      - "localhost:host-gateway"
-
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=123456
-    depends_on:
-      - prometheus
-    volumes:
-      - grafana_data:/var/lib/grafana
-
-
   db:
     image: postgres:17.4
     container_name: postgres_anb_db
@@ -72,65 +26,6 @@ services:
     ports:
       - "6379:6379"
 
-  app:
-    build:
-      context: .
-      dockerfile: ./Docker/Dockerfile.api
-    container_name: anb_fastapi_back
-    networks:
-      - backend
-    expose:
-      - "80"
-    ports:
-      - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    restart: on-failure:5
-    environment:
-      DATABASE_URL: postgresql://postgres:root@db:5432/ANB
-      REDIS_URL: redis://redis:6379/0
-    volumes:
-      - ./videos/unprocessed-videos:/app/videos/unprocessed-videos
-      - ./videos/processed-videos:/app/videos/processed-videos
-
-  worker:
-    build:
-      context: .
-      dockerfile: ./Docker/Dockerfile.worker
-    container_name: anb_celery_worker
-    ports:
-      - "9000:9000"
-    networks:
-      - backend
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    restart: on-failure:5
-    environment:
-      DATABASE_URL: postgresql://postgres:root@db:5432/ANB
-      REDIS_URL: redis://redis:6379/0
-    volumes:
-      - ./videos/unprocessed-videos:/app/videos/unprocessed-videos
-      - ./videos/processed-videos:/app/videos/processed-videos
-
-  nginx:
-    image: nginx:latest
-    container_name: anb_nginx_proxy
-    depends_on:
-      - app
-    ports:
-      - "80:80"
-    networks:
-      - backend
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    restart: unless-stopped
-
 networks:
   backend:
     driver: bridge
@@ -138,4 +33,3 @@ networks:
 volumes:
   pg-data:
     driver: local
-  grafana_data:
