@@ -16,7 +16,7 @@ BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 celery = Celery("tasks", broker=BROKER_URL)
 
 BASE_DIR = Path(__file__).parent.parent
-TMP_DIR = Path("/tmp")  # Carpeta temporal dentro del contenedor o VM
+TMP_DIR = Path("videos/unprocessed-videos/")  # Carpeta temporal dentro del contenedor o VM
 
 # Si existe el watermark local, úsalo; si no, podrías cargarlo desde S3 si es necesario
 WATERMARK_PATH = BASE_DIR / "videos" / "nba-rs-normalized.mp4"

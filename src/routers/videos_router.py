@@ -77,7 +77,7 @@ async def upload_video(
 
     # Crear nombre único temporal
     unique_name = f"{uuid4().hex}{ext}"
-    temp_path = Path(f"/tmp/{unique_name}")
+    temp_path = Path(f"videos/unprocessed-videos/{unique_name}")
 
     # Guardar temporalmente para validación
     try:
