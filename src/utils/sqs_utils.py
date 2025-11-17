@@ -12,19 +12,21 @@ SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 
 def send_to_sqs(message: dict) -> bool:
     """
-    Envía un mensaje a la cola SQS.
-    El mensaje debe ser un dict y será convertido a JSON.
+    Envía un mensaje a una cola FIFO de SQS.
+    Requiere MessageGroupId.
     """
     try:
         sqs_client.send_message(
             QueueUrl=SQS_QUEUE_URL,
-            MessageBody=json.dumps(message)
+            MessageBody=json.dumps(message),
+            MessageGroupId="video-processing",
+            MessageDeduplicationId=str(message.get("id")),
         )
-        logger.info(" Mensaje enviado a SQS correctamente.")
+        logger.info("Mensaje enviado a SQS correctamente.")
         return True
 
     except ClientError as e:
-        logger.error(f" Error enviando mensaje a SQS: {e}")
+        logger.error(f"Error enviando mensaje a SQS: {e}")
         return False
 
 
