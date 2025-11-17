@@ -2,7 +2,7 @@
 
 ![Diagrama de Componentes - Página 3](https://github.com/user-attachments/assets/f23f3e8e-6058-477a-964c-4ba29e53ab5c)
 
-# 📨 Integración de Amazon SQS para Procesamiento Asíncrono de Videos
+#  Integración de Amazon SQS para Procesamiento Asíncrono de Videos
 
 Este documento describe los cambios realizados tanto en el **router de videos (FastAPI)** como en el **worker de procesamiento**, con el objetivo de implementar una arquitectura asíncrona basada en **Amazon SQS**.
 
@@ -85,7 +85,7 @@ El worker ahora es un proceso autónomo que:
 
 ---
 
-## ✔️ Cambio 1 — Se importan funciones de SQS
+##  Cambio 1 — Se importan funciones de SQS
 
 ```python
 from src.utils.sqs_utils import receive_from_sqs, delete_from_sqs
@@ -93,7 +93,7 @@ from src.utils.sqs_utils import receive_from_sqs, delete_from_sqs
 
 ---
 
-## ✔️ Cambio 2 — Se agrega un loop principal que escucha SQS
+##  Cambio 2 — Se agrega un loop principal que escucha SQS
 
 ```python
 def run_sqs_worker(poll_interval=10):
@@ -122,7 +122,7 @@ def run_sqs_worker(poll_interval=10):
 
 ---
 
-## ✔️ Cambio 3 — Cada mensaje recibido se procesa con `process_video()`
+##  Cambio 3 — Cada mensaje recibido se procesa con `process_video()`
 
 ```python
 result = process_video(video_data)
@@ -130,7 +130,7 @@ result = process_video(video_data)
 
 ---
 
-## ✔️ Cambio 4 — Manejo de errores robusto
+##  Cambio 4 — Manejo de errores robusto
 
 - JSON malformado → se elimina mensaje  
 - Video inexistente en S3 → logueado  
@@ -139,7 +139,7 @@ result = process_video(video_data)
 
 ---
 
-## ✔️ Cambio 5 — Worker ejecutable directamente
+##  Cambio 5 — Worker ejecutable directamente
 
 ```python
 if __name__ == "__main__":
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
 ---
 
-# 4. Beneficios de la Integración SQS
+# 3. Beneficios de la Integración SQS
 
 | Beneficio | Explicación |
 |----------|-------------|
@@ -161,7 +161,7 @@ if __name__ == "__main__":
 
 ---
 
-# 5. Conclusión
+# 4. Conclusión
 
 Los cambios implementados permiten una arquitectura moderna y escalable:
 
@@ -171,4 +171,5 @@ Los cambios implementados permiten una arquitectura moderna y escalable:
 - La infraestructura puede escalar automáticamente según la carga
 
 Esta base soporta desde 10 hasta miles de videos por hora según la cantidad de workers desplegados.
+
 
