@@ -170,14 +170,63 @@ def process_video(video: dict):
             db.close()
 
 
+# =======================================================
+# LOOP PRINCIPAL PARA LEER DE SQS
+# =======================================================
+def run_sqs_worker(poll_interval=10):
+    """
+    Bucle principal que escucha la cola SQS y procesa mensajes uno a uno.
+    poll_interval: segundos entre revisiones si la cola está vacía.
+    """
+    logger.info("Iniciando worker de procesamiento de videos (SQS)...")
+
+    while True:
+        try:
+            messages = receive_from_sqs(max_messages=1, wait_time=10)
+            if not messages:
+                logger.debug("No hay mensajes en la cola. Esperando...")
+                import time
+                time.sleep(poll_interval)
+                continue
+
+            for msg in messages:
+                body = msg.get("Body")
+                if not body:
+                    logger.warning("Mensaje vacío, se elimina.")
+                    delete_from_sqs(msg["ReceiptHandle"])
+                    continue
+
+                import json
+                try:
+                    video_data = json.loads(body)
+                except Exception as e:
+                    logger.error(f"Error parseando JSON del mensaje: {e}")
+                    delete_from_sqs(msg["ReceiptHandle"])
+                    continue
+
+                logger.info(f"Procesando video ID={video_data.get('id')}, archivo={video_data.get('filename')}")
+                result = process_video(video_data)
+
+                if result.get("success"):
+                    logger.info(f"✅ Procesado correctamente: {video_data.get('filename')}")
+                else:
+                    logger.error(f"❌ Falló procesamiento: {result.get('error')}")
+
+                # Eliminar mensaje de la cola (importante para no reprocesar)
+                delete_from_sqs(msg["ReceiptHandle"])
+
+        except KeyboardInterrupt:
+            logger.info("Worker detenido manualmente.")
+            break
+
+        except Exception as e:
+            logger.error(f"Error general en el loop SQS: {e}")
+            import time
+            time.sleep(poll_interval)
+
+
 if __name__ == "__main__":
     print("=" * 60)
-    print("Video Processing Worker (S3 Version)")
+    print("Video Processing Worker (SQS Version)")
     print("=" * 60)
-    print("Uso:")
-    print("  celery -A worker.video_processor_task worker --loglevel=info")
-    print()
-    print("Para test manual:")
-    print("  from worker.video_processor_task import process_video")
-    print("  process_video.delay({'id': 1, 'filename': 'unprocessed-videos/test.mp4'})")
-    print("=" * 60)
+    run_sqs_worker()
