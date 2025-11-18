@@ -4,6 +4,7 @@ import logging
 from src.db.database import get_db
 from src.routers.auth_router import get_current_user
 from src.models.db_models import Video, Usuario
+from src.utils.sqs_utils import send_to_sqs
 import src.schemas.pydantic_schemas as schemas
 from uuid import uuid4
 import aiofiles
@@ -117,12 +118,28 @@ async def upload_video(
     db.commit()
     db.refresh(new_video)
 
-    # Encolar tarea Celery
     try:
-        from worker.video_processor_task import process_video
-        process_video.delay(new_video.to_dict())
+        video_dict = new_video.to_dict()
+
+        sent = send_to_sqs(video_dict)
+
+        if not sent:
+            logger.error("No se pudo encolar la tarea en SQS.")
+            return {
+                "message": "Error encolando tarea de procesamiento.",
+                "task_id": new_video.id,
+                "status": "error"
+            }
+
+        logger.info(f"Video {new_video.id} encolado en SQS exitosamente.")
+
     except Exception as e:
-        logger.error(f"Error encolando tarea Celery: {e}")
+        logger.error(f"Error enviando a SQS: {e}")
+        return {
+            "message": "Error interno al encolar el procesamiento.",
+            "task_id": new_video.id,
+            "status": "error"
+        }
 
     return {
         "message": "Video subido correctamente. Procesamiento en curso.",
